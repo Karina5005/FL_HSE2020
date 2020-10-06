@@ -211,8 +211,11 @@ class Tester:
 
 if __name__ == "__main__":
     Tester().run()
+    filename = sys.argv[1]
+    file = open(filename, 'r')
+    inp = file.read()
     program = ""
-    for line in sys.stdin:
+    for line in inp:
         program += line
     program = split_and_keep(program, '.')
     line = 0
