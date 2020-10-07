@@ -10,7 +10,7 @@ def split_and_keep(s, sep):
 
 def lexer(s):
     for i in range(len(s)):
-        if (s[i] == " " or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
+        if ((s[i] == " " and s[i - 1] == ' ') or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
             continue
         yield s[i]
     while True:
@@ -20,7 +20,7 @@ def lexer(s):
 def position_colon(s):
     pos = 0
     for i in range(len(s)):
-        if (s[i] == " " or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
+        if ((s[i] == " " and s[i - 1] == ' ') or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
             pos += 1
             continue
         pos += 1
@@ -76,16 +76,13 @@ class parser:
             return False
 
     def word(self):
-        checker = 0
+        if not (self.current.isalpha() or self.current == '_'):
+            return False
         while self.current.isalnum() or self.current == '_':
-            checker += 1
             self.current = next(self.lex)
             self.current_pos_col = next(self.pos_col)
             self.current_pos_line = next(self.pos_line)
-        if checker:
-            return True
-        else:
-            return False
+        return True
 
     def tail(self):
         if not self.disj():
@@ -95,11 +92,12 @@ class parser:
     def process(self):
         if not self.word():
             return self.current_pos_col, self.current_pos_line
+        self.accept(' ')
         if self.accept(':'):
             if self.expect('-'):
-                while self.current_pos_col < self.size:
-                    if not self.tail():
-                        return self.current_pos_col, self.current_pos_line
+                self.accept(' ')
+                if not self.tail():
+                    return self.current_pos_col, self.current_pos_line
             else:
                 return self.current_pos_col, self.current_pos_line
         elif not self.current == '.':
@@ -109,9 +107,11 @@ class parser:
         return self.current_pos_col, self.current_pos_line
 
     def disj(self):
+        self.accept(' ')
         if not self.conj():
             return False
         if self.accept(';'):
+            self.accept(' ')
             if not self.disj():
                 return False
         return True
@@ -120,18 +120,24 @@ class parser:
         if not self.lit():
             return False
         if self.accept(','):
+            self.accept(' ')
             if not self.conj():
                 return False
+            self.accept(' ')
         return True
 
     def lit(self):
         if self.accept('('):
+            self.accept(' ')
             if not self.tail():
                 return False
+            self.accept(' ')
             if not self.expect(')'):
                 return False
+            self.accept(' ')
             return True
-        if not self.letter():
+        self.accept(' ')
+        if not self.word():
             return False
         return True
 
@@ -178,6 +184,10 @@ class Tester:
             print("Failed bad_test8")
         if not self.bad_test9():
             print("Failed bad_test9")
+        if not self.bad_test10():
+            print("Failed bad_test10")
+        if not self.bad_test11():
+            print("Failed bad_test11")
 
     def good_test1(self):
         return parser('f.').process()[0] == -1
@@ -235,8 +245,15 @@ class Tester:
 
     def bad_test8(self):
         return parser('f ((g);(h)).').process()[0] != -1
+
     def bad_test9(self):
         return parser('f : - g.').process()[0] != -1
+
+    def bad_test10(self):
+        return parser('f :- g h.').process()[0] != -1
+
+    def bad_test11(self):
+        return parser('1f :- g h.').process()[0] != -1
 
 
 if __name__ == "__main__":
