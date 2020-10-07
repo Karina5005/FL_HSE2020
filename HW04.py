@@ -10,7 +10,7 @@ def split_and_keep(s, sep):
 
 def lexer(s):
     for i in range(len(s)):
-        if ((s[i] == " " and s[i - 1] == ' ') or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
+        if (s[i] == ' ' and s[i - 1] == ' ') or (s[i] == '\n' and s[i - 1] == '\n') or (s[i] == '\t' and s[i - 1] == '\t'):
             continue
         yield s[i]
     while True:
@@ -20,7 +20,7 @@ def lexer(s):
 def position_colon(s):
     pos = 0
     for i in range(len(s)):
-        if ((s[i] == " " and s[i - 1] == ' ') or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
+        if (s[i] == ' ' and s[i - 1] == ' ') or (s[i] == '\n' and s[i - 1] == '\n') or (s[i] == '\t' and s[i - 1] == '\t'):
             pos += 1
             continue
         pos += 1
@@ -57,6 +57,12 @@ class parser:
             return True
         return False
 
+    def skip(self):
+        while self.current == '\n' or self.current == '\t' or self.current == ' ':
+            self.current = next(self.lex)
+            self.current_pos_col = next(self.pos_col)
+            self.current_pos_line = next(self.pos_line)
+
     def expect(self, c):
         if self.current == c:
             self.current = next(self.lex)
@@ -85,17 +91,19 @@ class parser:
         return True
 
     def tail(self):
-        if not self.disj():
-            return False
-        return True
+        while self.current != '\0' and self.current != '.':
+            if not self.disj():
+                return False
+            return True
 
     def process(self):
+        self.skip()
         if not self.word():
             return self.current_pos_col, self.current_pos_line
-        self.accept(' ')
+        self.skip()
         if self.accept(':'):
             if self.expect('-'):
-                self.accept(' ')
+                self.skip()
                 if not self.tail():
                     return self.current_pos_col, self.current_pos_line
             else:
@@ -107,11 +115,11 @@ class parser:
         return self.current_pos_col, self.current_pos_line
 
     def disj(self):
-        self.accept(' ')
+        self.skip()
         if not self.conj():
             return False
         if self.accept(';'):
-            self.accept(' ')
+            self.skip()
             if not self.disj():
                 return False
         return True
@@ -120,23 +128,23 @@ class parser:
         if not self.lit():
             return False
         if self.accept(','):
-            self.accept(' ')
+            self.skip()
             if not self.conj():
                 return False
-            self.accept(' ')
+            self.skip()
         return True
 
     def lit(self):
         if self.accept('('):
-            self.accept(' ')
+            self.skip()
             if not self.tail():
                 return False
-            self.accept(' ')
+            self.skip()
             if not self.expect(')'):
                 return False
-            self.accept(' ')
+            self.skip()
             return True
-        self.accept(' ')
+        self.skip()
         if not self.word():
             return False
         return True
@@ -205,7 +213,7 @@ class Tester:
         return parser('f :- (g),h.').process()[0] == -1
 
     def good_test6(self):
-        return parser('f :- (g);h.').process()[0] == -1
+        return parser("f :- ((gh, kl); (qw, po); k) ;p.").process()[0] == -1
 
     def good_test7(self):
         return parser('f :- ((g),(h)).').process()[0] == -1
@@ -268,16 +276,16 @@ if __name__ == "__main__":
     line = 0
     colon = 0
     for part in program:
-        print(part)
-        p = parser(part)
-        result = p.process()
-        line += result[1]
-        if result[1] == 0 and result[0] != -1:
-            colon += result[0]
-        if not result[0] == -1:
-            print("Syntax error ", "line:", line, ", colon:", colon + result[0])
-            break
-        if result[1] == 0 and result[0] != -1:
-            colon += len(part)
-        else:
-            colon = 0
+        if part != '\n':
+            p = parser(part)
+            result = p.process()
+            line += result[1]
+            if result[1] == 0 and result[0] != -1:
+                colon += result[0]
+            if not result[0] == -1:
+                print("Syntax error ", "line:", line, ", colon:", colon + result[0])
+                break
+            if result[1] == 0 and result[0] != -1:
+                colon += len(part)
+            else:
+                colon = 0
