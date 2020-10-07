@@ -9,18 +9,18 @@ def split_and_keep(s, sep):
 
 
 def lexer(s):
-    for c in s:
-        if c == " " or c == "\n":
+    for i in range(len(s)):
+        if (s[i] == " " or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
             continue
-        yield c
+        yield s[i]
     while True:
         yield '\0'
 
 
 def position_colon(s):
     pos = 0
-    for c in s:
-        if c == ' ' or c == '\n':
+    for i in range(len(s)):
+        if (s[i] == " " or s[i] == "\n") and s[i - 1] != ':' and s[i + 1] != '-':
             pos += 1
             continue
         pos += 1
@@ -75,13 +75,25 @@ class parser:
         else:
             return False
 
+    def word(self):
+        checker = 0
+        while self.current.isalnum() or self.current == '_':
+            checker += 1
+            self.current = next(self.lex)
+            self.current_pos_col = next(self.pos_col)
+            self.current_pos_line = next(self.pos_line)
+        if checker:
+            return True
+        else:
+            return False
+
     def tail(self):
         if not self.disj():
             return False
         return True
 
     def process(self):
-        if not self.letter():
+        if not self.word():
             return self.current_pos_col, self.current_pos_line
         if self.accept(':'):
             if self.expect('-'):
@@ -142,6 +154,12 @@ class Tester:
             print("Failed good_test7")
         if not self.good_test8():
             print("Failed good_test8")
+        if not self.good_test9():
+            print("Failed good_test9")
+        if not self.good_test10():
+            print("Failed good_test10")
+        if not self.good_test11():
+            print("Failed good_test11")
         if not self.bad_test1():
             print("Failed bad_test1")
         if not self.bad_test2():
@@ -158,6 +176,8 @@ class Tester:
             print("Failed bad_test7")
         if not self.bad_test8():
             print("Failed bad_test8")
+        if not self.bad_test9():
+            print("Failed bad_test9")
 
     def good_test1(self):
         return parser('f.').process()[0] == -1
@@ -183,6 +203,15 @@ class Tester:
     def good_test8(self):
         return parser('f :- ((g);(h)).').process()[0] == -1
 
+    def good_test9(self):
+        return parser('fAb :- ((g),(h)).').process()[0] == -1
+
+    def good_test10(self):
+        return parser('o_o :- ((g);(h)).').process()[0] == -1
+
+    def good_test11(self):
+        return parser('fAb1 :- ((g),(h)).').process()[0] == -1
+
     def bad_test1(self):
         return parser('f').process()[0] != -1
 
@@ -206,7 +235,8 @@ class Tester:
 
     def bad_test8(self):
         return parser('f ((g);(h)).').process()[0] != -1
-
+    def bad_test9(self):
+        return parser('f : - g.').process()[0] != -1
 
 
 if __name__ == "__main__":
@@ -221,6 +251,7 @@ if __name__ == "__main__":
     line = 0
     colon = 0
     for part in program:
+        print(part)
         p = parser(part)
         result = p.process()
         line += result[1]
@@ -233,4 +264,3 @@ if __name__ == "__main__":
             colon += len(part)
         else:
             colon = 0
-
