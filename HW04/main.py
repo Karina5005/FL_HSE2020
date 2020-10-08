@@ -159,16 +159,18 @@ if __name__ == "__main__":
     line = 0
     colon = 0
     for part in program:
-        if part != '\n':
+        if part != '\n' and part != '':
             p = parser(part)
             result = p.process()
             line += result[1]
             if result[1] == 0 and result[0] != -1:
                 colon += result[0]
             if not result[0] == -1:
+                print(part)
                 print("Syntax error ", "line:", line, ", colon:", colon + result[0])
                 break
             if result[1] == 0 and result[0] != -1:
                 colon += len(part)
             else:
                 colon = 0
+
